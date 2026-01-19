@@ -324,6 +324,30 @@
             text-align: center;
         }
 
+        .action-cell button {
+            margin: 2px;
+            padding: 6px 10px;
+            font-size: 0.85em;
+        }
+
+        .action-cell button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        tr[draggable="true"] {
+            user-select: none;
+        }
+
+        tr[draggable="true"].drag-over {
+            background: #e8e8e8 !important;
+            border-top: 3px solid #667eea;
+        }
+
+        body.dark-mode tr[draggable="true"].drag-over {
+            background: #2a2a3e !important;
+        }
+
         .notes-section {
             margin-top: 30px;
             padding-top: 20px;
@@ -653,6 +677,63 @@
             }
         }
 
+        let draggedIndex = null;
+
+        function handleDragStart(e, index) {
+            draggedIndex = index;
+            e.target.closest('tr').style.opacity = '0.5';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.target.closest('tr')?.classList.add('drag-over');
+        }
+
+        function handleDrop(e, targetIndex) {
+            e.preventDefault();
+            e.target.closest('tr')?.classList.remove('drag-over');
+            
+            if (draggedIndex !== null && draggedIndex !== targetIndex) {
+                const draggedHabit = habits[draggedIndex];
+                habits.splice(draggedIndex, 1);
+                
+                if (draggedIndex < targetIndex) {
+                    habits.splice(targetIndex - 1, 0, draggedHabit);
+                } else {
+                    habits.splice(targetIndex, 0, draggedHabit);
+                }
+                
+                saveData();
+                render();
+                showSuccess('✓ Habit reordered!');
+            }
+        }
+
+        function handleDragEnd(e) {
+            e.target.closest('tr').style.opacity = '1';
+            document.querySelectorAll('tr').forEach(tr => tr.classList.remove('drag-over'));
+            draggedIndex = null;
+        }
+
+        function moveHabitUp(index) {
+            if (index > 0) {
+                [habits[index], habits[index - 1]] = [habits[index - 1], habits[index]];
+                saveData();
+                render();
+                showSuccess('✓ Habit moved up!');
+            }
+        }
+
+        function moveHabitDown(index) {
+            if (index < habits.length - 1) {
+                [habits[index], habits[index + 1]] = [habits[index + 1], habits[index]];
+                saveData();
+                render();
+                showSuccess('✓ Habit moved down!');
+            }
+        }
+
         function toggleDay(habitId, dayIndex) {
             const habit = habits.find(h => h.id === habitId);
             if (habit) {
@@ -684,9 +765,9 @@
                 return;
             }
 
-            tbody.innerHTML = habits.map(habit => `
-                <tr>
-                    <td class="habit-name">${habit.name} ${habit.category ? `<span class="category-badge category-${habit.category}">${getCategoryIcon(habit.category)}</span>` : ''} ${getStreakDisplay(habit)}</td>
+            tbody.innerHTML = habits.map((habit, index) => `
+                <tr draggable="true" data-habit-id="${habit.id}" ondragstart="handleDragStart(event, ${index})" ondragover="handleDragOver(event)" ondrop="handleDrop(event, ${index})" ondragend="handleDragEnd(event)" style="cursor: grab;">
+                    <td class="habit-name" style="cursor: grab;">${habit.name} ${habit.category ? `<span class="category-badge category-${habit.category}">${getCategoryIcon(habit.category)}</span>` : ''} ${getStreakDisplay(habit)}</td>
                     ${DAYS.map((day, index) => `
                         <td class="day-cell">
                             <input 
