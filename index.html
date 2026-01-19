@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Habit Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            transition: background 0.3s;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        body.dark-mode .container {
+            background: #0f3460;
+            color: #eee;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        body.dark-mode h1 {
+            color: #eee;
+        }
+
+        .week-info {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        body.dark-mode .week-info {
+            color: #aaa;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .header-actions button {
+            padding: 8px 15px;
+            font-size: 0.9em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"], input[type="date"], select {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            flex: 1;
+            min-width: 150px;
+            background: white;
+            color: #333;
+        }
+
+        body.dark-mode input[type="text"], 
+        body.dark-mode input[type="date"], 
+        body.dark-mode select {
+            background: #1a1a2e;
+            color: #eee;
+            border-color: #444;
+        }
+
+        input[type="text"]:focus, input[type="date"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button.delete-btn {
+            background: #e74c3c;
+            padding: 8px 12px;
+        }
+
+        button.delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        body.dark-mode th {
+            background: #16213e;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        body.dark-mode td {
+            border-bottom-color: #333;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        body.dark-mode tr:hover {
+            background: #1a1a2e;
+        }
+
+        .habit-name {
+            font-weight: 500;
+            color: #333;
+            min-width: 150px;
+        }
+
+        body.dark-mode .habit-name {
+            color: #eee;
+        }
+
+        .day-checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .day-header {
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .day-cell {
+            text-align: center;
+        }
+
+        .completion-rate {
+            font-weight: 600;
+            color: #27ae60;
+            text-align: center;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        body.dark-mode .modal-content {
+            background: #0f3460;
+            color: #eee;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        body.dark-mode .close:hover {
+            color: #eee;
+        }
+
+        .streak-badge {
+            display: inline-block;
+            background: #f39c12;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .category-health {
+            background: #27ae60;
+        }
+
+        .category-fitness {
+            background: #e74c3c;
+        }
+
+        .category-learning {
+            background: #3498db;
+        }
+
+        .category-productivity {
+            background: #9b59b6;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .action-cell {
+            text-align: center;
+        }
+
+        .notes-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        body.dark-mode .notes-section {
+            border-top-color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 100px;
+            background: white;
+            color: #333;
+        }
+
+        body.dark-mode textarea {
+            background: #1a1a2e;
+            color: #eee;
+            border-color: #444;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        body.dark-mode h3 {
+            color: #eee;
+        }
+
+        .export-section {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .export-section button {
+            padding: 10px 20px;
+            font-size: 0.95em;
+        }
+
+        .edit-habit-item {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        body.dark-mode .edit-habit-item {
+            background: #1a1a2e;
+        }
+
+        .edit-habit-item input {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .edit-habit-item select {
+            margin-right: 10px;
+        }
+
+        .success-message {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #27ae60;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Weekly Habit Tracker</h1>
+        <div class="week-info">
+            <p>Week of <input type="date" id="weekStart" /></p>
+        </div>
+
+        <div class="header-actions">
+            <button onclick="toggleDarkMode()">🌙 Dark Mode</button>
+            <button onclick="openEditModal()">✏️ Edit Habits</button>
+            <button onclick="exportData()">📥 Export</button>
+            <button onclick="openImportModal()">📤 Import</button>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="habitInput" placeholder="Enter a new habit..." />
+            <select id="categorySelect">
+                <option value="other">Category</option>
+                <option value="health">🏥 Health</option>
+                <option value="fitness">💪 Fitness</option>
+                <option value="learning">📚 Learning</option>
+                <option value="productivity">⚡ Productivity</option>
+                <option value="other">Other</option>
+            </select>
+            <button onclick="addHabit()">Add Habit</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalHabits">0</div>
+                <div class="stat-label">Total Habits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="overallCompletion">0%</div>
+                <div class="stat-label">Overall Completion</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="longestStreak">0</div>
+                <div class="stat-label">Best Streak</div>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="habitTable">
+                <thead>
+                    <tr>
+                        <th>Habit</th>
+                        <th class="day-header">Mon</th>
+                        <th class="day-header">Tue</th>
+                        <th class="day-header">Wed</th>
+                        <th class="day-header">Thu</th>
+                        <th class="day-header">Fri</th>
+                        <th class="day-header">Sat</th>
+                        <th class="day-header">Sun</th>
+                        <th class="day-header">%</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="habitBody">
+                    <tr class="empty-state"><td colspan="10">No habits yet. Add one to get started!</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="notes-section">
+            <h3>📝 Weekly Notes & Reflections</h3>
+            <textarea id="notesArea" placeholder="Add your weekly notes, reflections, or goals here..."></textarea>
+            <button onclick="saveNotes()" style="margin-top: 10px;">Save Notes</button>
+        </div>
+
+        <div class="export-section">
+            <button onclick="clearAllData()" style="background: #e74c3c;">🗑️ Clear All Data</button>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Habits</h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div id="editHabitsList"></div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import Data</h2>
+                <span class="close" onclick="closeImportModal()">&times;</span>
+            </div>
+            <textarea id="importData" placeholder="Paste your exported JSON data here..." style="width: 100%; height: 200px;"></textarea>
+            <button onclick="importData()" style="margin-top: 10px; width: 100%;">Import</button>
+        </div>
+    </div>
+
+    <div class="success-message" id="successMessage">✓ Saved successfully!</div>
+
+    <script>
+        const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        let habits = [];
+        let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+        // Initialize
+        function init() {
+            loadData();
+            setWeekStart();
+            render();
+            if (isDarkMode) {
+                document.body.classList.add('dark-mode');
+            }
+        }
+
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode);
+        }
+
+        function showSuccess(message = '✓ Saved successfully!') {
+            const msg = document.getElementById('successMessage');
+            msg.textContent = message;
+            msg.style.display = 'block';
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 2000);
+        }
+
+        function getCategoryIcon(category) {
+            const icons = {
+                health: '🏥',
+                fitness: '💪',
+                learning: '📚',
+                productivity: '⚡',
+                other: '📌'
+            };
+            return icons[category] || '📌';
+        }
+
+        function getStreakDisplay(habit) {
+            const streak = calculateStreak(habit);
+            if (streak > 0) {
+                return `<span class="streak-badge">🔥 ${streak}</span>`;
+            }
+            return '';
+        }
+
+        function calculateStreak(habit) {
+            let streak = 0;
+            for (let i = habit.days.length - 1; i >= 0; i--) {
+                if (habit.days[i]) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        function getLongestStreak() {
+            if (habits.length === 0) return 0;
+            return Math.max(...habits.map(h => {
+                let maxStreak = 0;
+                let currentStreak = 0;
+                h.days.forEach(day => {
+                    if (day) {
+                        currentStreak++;
+                        maxStreak = Math.max(maxStreak, currentStreak);
+                    } else {
+                        currentStreak = 0;
+                    }
+                });
+                return maxStreak;
+            }));
+        }
+
+        function setWeekStart() {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            const monday = new Date(today.setDate(diff));
+            
+            const year = monday.getFullYear();
+            const month = String(monday.getMonth() + 1).padStart(2, '0');
+            const day = String(monday.getDate()).padStart(2, '0');
+            
+            document.getElementById('weekStart').value = `${year}-${month}-${day}`;
+        }
+
+        function addHabit() {
+            const input = document.getElementById('habitInput');
+            const category = document.getElementById('categorySelect').value;
+            const habitName = input.value.trim();
+
+            if (!habitName) {
+                alert('Please enter a habit name');
+                return;
+            }
+
+            const newHabit = {
+                id: Date.now(),
+                name: habitName,
+                category: category === 'other' ? null : category,
+                days: [false, false, false, false, false, false, false],
+                createdDate: new Date().toISOString()
+            };
+
+            habits.push(newHabit);
+            input.value = '';
+            document.getElementById('categorySelect').value = 'other';
+            saveData();
+            render();
+            showSuccess('✓ Habit added!');
+        }
+
+        function deleteHabit(id) {
+            if (confirm('Are you sure you want to delete this habit?')) {
+                habits = habits.filter(h => h.id !== id);
+                saveData();
+                render();
+                showSuccess('✓ Habit deleted!');
+            }
+        }
+
+        function toggleDay(habitId, dayIndex) {
+            const habit = habits.find(h => h.id === habitId);
+            if (habit) {
+                habit.days[dayIndex] = !habit.days[dayIndex];
+                saveData();
+                render();
+            }
+        }
+
+        function getCompletionRate(habit) {
+            const completed = habit.days.filter(d => d).length;
+            return Math.round((completed / 7) * 100);
+        }
+
+        function getOverallCompletion() {
+            if (habits.length === 0) return 0;
+            const total = habits.reduce((sum, h) => sum + getCompletionRate(h), 0);
+            return Math.round(total / habits.length);
+        }
+
+        function render() {
+            const tbody = document.getElementById('habitBody');
+            
+            if (habits.length === 0) {
+                tbody.innerHTML = '<tr class="empty-state"><td colspan="10">No habits yet. Add one to get started!</td></tr>';
+                document.getElementById('totalHabits').textContent = '0';
+                document.getElementById('overallCompletion').textContent = '0%';
+                document.getElementById('longestStreak').textContent = '0';
+                return;
+            }
+
+            tbody.innerHTML = habits.map(habit => `
+                <tr>
+                    <td class="habit-name">${habit.name} ${habit.category ? `<span class="category-badge category-${habit.category}">${getCategoryIcon(habit.category)}</span>` : ''} ${getStreakDisplay(habit)}</td>
+                    ${DAYS.map((day, index) => `
+                        <td class="day-cell">
+                            <input 
+                                type="checkbox" 
+                                class="day-checkbox"
+                                ${habit.days[index] ? 'checked' : ''}
+                                onchange="toggleDay(${habit.id}, ${index})"
+                            />
+                        </td>
+                    `).join('')}
+                    <td class="completion-rate">${getCompletionRate(habit)}%</td>
+                    <td class="action-cell">
+                        <button class="delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('totalHabits').textContent = habits.length;
+            document.getElementById('overallCompletion').textContent = getOverallCompletion() + '%';
+            document.getElementById('longestStreak').textContent = getLongestStreak();
+        }
+
+        function saveData() {
+            localStorage.setItem('habits', JSON.stringify(habits));
+        }
+
+        function loadData() {
+            const stored = localStorage.getItem('habits');
+            habits = stored ? JSON.parse(stored) : [];
+        }
+
+        function saveNotes() {
+            const notes = document.getElementById('notesArea').value;
+            localStorage.setItem('weeklyNotes', notes);
+            showSuccess('✓ Notes saved!');
+        }
+
+        function loadNotes() {
+            const notes = localStorage.getItem('weeklyNotes');
+            if (notes) {
+                document.getElementById('notesArea').value = notes;
+            }
+        }
+
+        function exportData() {
+            const data = {
+                habits: habits,
+                notes: document.getElementById('notesArea').value,
+                exportDate: new Date().toISOString()
+            };
+
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `habit-tracker-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            showSuccess('✓ Data exported!');
+        }
+
+        function openImportModal() {
+            document.getElementById('importModal').style.display = 'block';
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        function importData() {
+            const importText = document.getElementById('importData').value.trim();
+            if (!importText) {
+                alert('Please paste your data');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(importText);
+                habits = data.habits || [];
+                if (data.notes) {
+                    document.getElementById('notesArea').value = data.notes;
+                }
+                saveData();
+                loadNotes();
+                render();
+                closeImportModal();
+                showSuccess('✓ Data imported successfully!');
+            } catch (e) {
+                alert('Invalid data format. Please check your JSON.');
+            }
+        }
+
+        function openEditModal() {
+            const editList = document.getElementById('editHabitsList');
+            editList.innerHTML = habits.map(habit => `
+                <div class="edit-habit-item">
+                    <input type="text" value="${habit.name}" onchange="updateHabitName(${habit.id}, this.value)" />
+                    <select onchange="updateHabitCategory(${habit.id}, this.value)">
+                        <option value="">None</option>
+                        <option value="health" ${habit.category === 'health' ? 'selected' : ''}>Health</option>
+                        <option value="fitness" ${habit.category === 'fitness' ? 'selected' : ''}>Fitness</option>
+                        <option value="learning" ${habit.category === 'learning' ? 'selected' : ''}>Learning</option>
+                        <option value="productivity" ${habit.category === 'productivity' ? 'selected' : ''}>Productivity</option>
+                    </select>
+                    <button class="delete-btn" onclick="deleteHabit(${habit.id})">Delete</button>
+                </div>
+            `).join('');
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        function updateHabitName(id, newName) {
+            const habit = habits.find(h => h.id === id);
+            if (habit) {
+                habit.name = newName;
+                saveData();
+                render();
+            }
+        }
+
+        function updateHabitCategory(id, category) {
+            const habit = habits.find(h => h.id === id);
+            if (habit) {
+                habit.category = category || null;
+                saveData();
+                render();
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure? This will delete ALL habits and notes permanently!')) {
+                habits = [];
+                document.getElementById('notesArea').value = '';
+                localStorage.clear();
+                render();
+                loadNotes();
+                showSuccess('✓ All data cleared!');
+            }
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const editModal = document.getElementById('editModal');
+            const importModal = document.getElementById('importModal');
+            if (event.target == editModal) {
+                editModal.style.display = 'none';
+            }
+            if (event.target == importModal) {
+                importModal.style.display = 'none';
+            }
+        }
+
+        // Allow Enter key to add habit
+        document.getElementById('habitInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addHabit();
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            init();
+            loadNotes();
+        });
+    </script>
+</body>
+</html>
